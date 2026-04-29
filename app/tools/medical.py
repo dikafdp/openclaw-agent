@@ -48,46 +48,75 @@ async def check_schedule(state: AgentState) -> AgentState:
 
 
 async def book_appointment(state: AgentState) -> AgentState:
-    doctor = state.get("doctor_name", "")
-    dokter_id = state.get("dokter_id", "")
-    poli = state.get("poli_name", "")
-    poli_id = state.get("poli_id", "")
-    patient = state.get("patient_name", "")
-    date = state.get("booking_date", "")
-    time = state.get("booking_time", "") or "-"
-    pembayaran = state.get("metode_pembayaran", "Umum")
+    doctor = str(state.get("doctor_name", "")).strip()
+    dokter_id = str(state.get("dokter_id", "")).strip()
+    poli = str(state.get("poli_name", "")).strip()
+    poli_id = str(state.get("poli_id", "")).strip()
+    patient = str(state.get("patient_name", "")).strip()
+    pasien_id = str(state.get("pasien_id", "")).strip()
+    date = str(state.get("booking_date", "")).strip()
+    time = str(state.get("booking_time", "")).strip()
+    pembayaran = str(state.get("metode_pembayaran", "Umum")).strip() or "Umum"
 
-    # Keep both id/name supported. If your n8n requires id strictly, it can reject when only name is present.
     missing = []
+
     if not (poli_id or poli):
         missing.append("Nama/ID Poli")
+
     if not (dokter_id or doctor):
         missing.append("Nama/ID Dokter")
+
     if not patient:
         missing.append("Nama Pasien")
+
     if not date:
         missing.append("Tanggal")
+
+    if not time or time in ["-", "00:00", "00:00:00"]:
+        missing.append("Jam Booking")
+
     if missing:
         return {
             "final_answer": (
                 "Mohon lengkapi data booking Anda:\n"
                 + "\n".join(f"- {item}" for item in missing)
-                + "\n\nContoh: booking poli anak dengan dr. Anthony besok jam 07:30 atas nama Dika pakai BPJS."
+                + "\n\nContoh:\n"
+                "booking jadwal dr. Anthony Pratama dari poli Bedah Umum Eksekutif "
+                "pada hari jumat jam 07:30 atas nama Carlos menggunakan BPJS."
             )
         }
 
+    # Normalisasi jam agar n8n/SQL tidak menerima string aneh.
+    if len(time) == 5:
+        jam_mulai = f"{time}:00"
+    else:
+        jam_mulai = time
+
+    try:
+        base_dt = dt.datetime.strptime(jam_mulai, "%H:%M:%S")
+        jam_akhir = (base_dt + dt.timedelta(minutes=30)).strftime("%H:%M:%S")
+    except Exception:
+        jam_akhir = ""
+
     payload = {
+        # Kirim dua format sekaligus agar cocok dengan n8n lama maupun baru.
         "dokter_id": dokter_id,
         "doctor_name": doctor,
         "poli_id": poli_id,
         "poli_name": poli,
+        "pasien_id": pasien_id,
         "patient_name": patient,
         "booking_date": date,
+        "tanggal": date,
         "booking_time": time,
+        "jam_mulai": jam_mulai,
+        "jam_akhir": jam_akhir,
         "metode_pembayaran": pembayaran,
     }
+
     try:
         status, raw_data = await _request("POST", "buat-janji-copy", json=payload)
+
         data = _first_json_item(raw_data)
         data = data if isinstance(data, dict) else {}
 
@@ -99,8 +128,9 @@ async def book_appointment(state: AgentState) -> AgentState:
         if status in {400, 409} or status_code in {400, 409} or is_success is False:
             return {
                 "final_answer": (
-                    f"Mohon maaf, jadwal dr. {doctor or dokter_id} di Poli {poli or poli_id} "
-                    f"untuk tanggal {date} jam {time} sudah terisi atau jadwal bentrok.\n\n"
+                    f"Mohon maaf, jadwal dr. {doctor or dokter_id} "
+                    f"di Poli {poli or poli_id} untuk tanggal {date} jam {time} "
+                    "sudah terisi atau jadwal bentrok.\n\n"
                     "Silakan pilih jam lain atau cek ketersediaan dokter lain."
                 )
             }
@@ -109,14 +139,30 @@ async def book_appointment(state: AgentState) -> AgentState:
             return {
                 "final_answer": (
                     "✅ Booking berhasil terdaftar.\n\n"
-                    f"Detail:\n- Pasien: {patient}\n- Dokter: dr. {doctor or dokter_id}\n"
-                    f"- Poli: {poli or poli_id}\n- Tanggal: {date}\n- Jam: {time}\n- Pembayaran: {pembayaran}\n\nTerima kasih."
-                )
+                    f"Detail:\n"
+                    f"- Pasien: {patient}\n"
+                    f"- Dokter: dr. {doctor or dokter_id}\n"
+                    f"- Poli: {poli or poli_id}\n"
+                    f"- Tanggal: {date}\n"
+                    f"- Jam: {time}\n"
+                    f"- Pembayaran: {pembayaran}\n\n"
+                    "Terima kasih."
+                ),
+                "payload": payload,
+                "raw_response": raw_data,
             }
-        return {"final_answer": "Permintaan booking telah dikirim ke sistem, tetapi status akhir belum jelas dari n8n."}
-    except Exception as e:
-        return {"final_answer": f"Terjadi kesalahan sistem internal saat booking: {str(e)}"}
 
+        return {
+            "final_answer": "Permintaan booking telah dikirim ke sistem, tetapi status akhir belum jelas dari n8n.",
+            "payload": payload,
+            "raw_response": raw_data,
+        }
+
+    except Exception as e:
+        return {
+            "final_answer": f"Terjadi kesalahan sistem internal saat booking: {str(e)}",
+            "payload": payload,
+        }
 
 async def get_clinic_info(state: AgentState) -> AgentState:
     try:

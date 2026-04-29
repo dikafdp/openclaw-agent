@@ -110,6 +110,7 @@ async def execute_tool_by_name(name: str, args: dict, user_input: str) -> dict:
                 "poli_name": args.get("poli_name", ""),
                 "poli_id": args.get("poli_id", ""),
                 "patient_name": args.get("patient_name", ""),
+                "pasien_id": args.get("pasien_id", ""),
                 "booking_date": args.get("booking_date", ""),
                 "booking_time": args.get("booking_time", ""),
                 "metode_pembayaran": args.get("metode_pembayaran", "Umum"),
