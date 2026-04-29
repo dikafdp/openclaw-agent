@@ -88,12 +88,12 @@ MASTER_TOOLS = [
             "properties": {
                 "search_query": {
                     "type": "string",
-                    "description": "Kata kunci pencarian. Contoh: Jiwoo H2H"
+                    "description": "Kata kunci pencarian. Contoh: asset game, selat hormuz, jiwoo h2h"
                 },
                 "search_mode": {
                     "type": "string",
                     "enum": ["answer", "links", "news", "images"],
-                    "description": "Gunakan 'images' jika user meminta gambar/foto dari internet."
+                    "description": "Gunakan 'links' untuk link, 'news' untuk berita, 'images' untuk gambar/foto, dan 'answer' untuk jawaban biasa."
                 }
             },
             "required": ["search_query"]
