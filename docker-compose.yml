@@ -1,0 +1,45 @@
+services:
+  fastapi:
+    build: .
+    container_name: aira-openclaw-fastapi
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      PORT: ${PORT:-8000}
+      JOB_DB_PATH: /app/data/jobs_memory.db
+      SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
+      N8N_BASE_URL: ${N8N_BASE_URL:-https://flow.eraenterprise.id/webhook}
+      N8N_LLM_WEBHOOK_URL: ${N8N_LLM_WEBHOOK_URL:-https://flow.eraenterprise.id/webhook/aluna-aira}
+      LLM_PROVIDER: ${LLM_PROVIDER:-n8n}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-https://flow.eraenterprise.id/webhook/aluna-aira}
+    depends_on:
+      - searxng
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: aira-searxng
+    restart: unless-stopped
+    ports:
+      - "8888:8080"
+    environment:
+      SEARXNG_SETTINGS_PATH: /etc/searxng/settings.yml
+    volumes:
+      - ./searxng-settings:/etc/searxng
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: aira-ngrok
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: "http fastapi:8000 --log=stdout"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    depends_on:
+      - fastapi

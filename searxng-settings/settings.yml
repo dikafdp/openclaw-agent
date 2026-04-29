@@ -1,0 +1,24 @@
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "Aira SearXNG"
+  enable_metrics: false
+
+search:
+  safe_search: 1
+  autocomplete: ""
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "aira-searxng-2026-random-8f7c1d9a4b2e6f3a"
+  public_instance: false
+  limiter: false
+  image_proxy: false
+
+ui:
+  static_use_hash: true
