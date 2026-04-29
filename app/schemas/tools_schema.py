@@ -79,16 +79,26 @@ MASTER_TOOLS = [
         }
     },
     {
-        "type": "function",
-        "function": {
-            "name": "execute_search",
-            "description": "Mencari informasi atau berita terbaru dari internet (Web Search).",
-            "parameters": {
-                "type": "object",
-                "properties": {"search_query": {"type": "string", "description": "Kata kunci pencarian"}},
-                "required": ["search_query"]
-            }
+    "type": "function",
+    "function": {
+        "name": "execute_search",
+        "description": "Mencari informasi, berita, link, atau gambar dari internet menggunakan SearXNG.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "search_query": {
+                    "type": "string",
+                    "description": "Kata kunci pencarian. Contoh: Jiwoo H2H"
+                },
+                "search_mode": {
+                    "type": "string",
+                    "enum": ["answer", "links", "news", "images"],
+                    "description": "Gunakan 'images' jika user meminta gambar/foto dari internet."
+                }
+            },
+            "required": ["search_query"]
         }
+    }
     },
     {
         "type": "function",

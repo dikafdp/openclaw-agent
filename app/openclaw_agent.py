@@ -7,6 +7,24 @@ from app.routers.pre_router import classify_intent
 from app.prompts.system_prompts import get_domain_context
 from app.tools.executor import execute_tool_by_name
 
+def is_image_search_request(text: str) -> bool:
+    text = (text or "").lower()
+
+    keywords = [
+        "cari gambar",
+        "carikan gambar",
+        "cari foto",
+        "carikan foto",
+        "search gambar",
+        "search foto",
+        "image search",
+        "search image",
+        "gambar dari internet",
+        "foto dari internet",
+    ]
+
+    return any(k in text for k in keywords)
+
 class TrueOpenClawAgent:
     def __init__(self):
         self.last_image_url = ""
@@ -77,7 +95,17 @@ class TrueOpenClawAgent:
                             
                             if fn_name:
                                 fallback_args = {}
-                                if fn_name in ["generate_image", "execute_search"]: fallback_args = {"search_query": user_input, "image_prompt": user_input}
+                                if fn_name == "execute_search":
+                                    fallback_args = {
+                                        "search_query": user_input,
+                                        "search_mode": "images" if is_image_search_request(user_input) else "answer"
+                                    }
+
+                                elif fn_name == "generate_image":
+                                    fallback_args = {
+                                        "image_prompt": user_input
+                                    }
+                                    
                                 elif fn_name == "get_weather": fallback_args = {"location": user_input}
                                 
                                 await self._execute(fn_name, fallback_args, user_input, messages)
@@ -96,8 +124,28 @@ class TrueOpenClawAgent:
                             await self._execute("generate_image", {"image_prompt": content_text or user_input}, user_input, messages)
                             continue
                         elif domain == "search":
-                            await self._execute("execute_search", {"search_query": user_input}, user_input, messages)
+                            search_mode = "images" if is_image_search_request(user_input) else "answer"
+
+                            tool_res = await self._execute(
+                                "execute_search",
+                                {
+                                    "search_query": user_input,
+                                    "search_mode": search_mode
+                                },
+                                user_input,
+                                messages
+                            )
+
+                            if tool_res.get("image_url"):
+                                return {
+                                    "final_answer": tool_res.get("final_answer", "Berikut gambar yang ditemukan."),
+                                    "domain": domain,
+                                    "action": "execute_search",
+                                    "image_url": tool_res.get("image_url", "")
+                                }
+
                             continue
+                        
                         elif domain == "weather":
                             await self._execute("get_weather", {"location": user_input}, user_input, messages)
                             continue
@@ -109,11 +157,24 @@ class TrueOpenClawAgent:
                 for tool_call in ai_msg["tool_calls"]:
                     fn_name = tool_call["function"]["name"]
                     args = tool_call["function"]["arguments"]
-                    if isinstance(args, str):
-                        try: args = json.loads(args)
-                        except: args = {}
 
-                    await self._execute(fn_name, args, user_input, messages)
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except:
+                            args = {}
+
+                    tool_res = await self._execute(fn_name, args, user_input, messages)
+
+                    if tool_res.get("image_url"):
+                        return {
+                            "final_answer": tool_res.get("final_answer", "Berikut gambar yang ditemukan."),
+                            "domain": domain,
+                            "action": fn_name,
+                            "image_url": tool_res.get("image_url", "")
+                        }
+
+                    continue
             
             return {"final_answer": "Proses terlalu panjang, mohon sederhanakan permintaan Anda.", "image_url": self.last_image_url}
 

@@ -39,10 +39,25 @@ def get_domain_context(domain: str) -> tuple[str, list]:
         
     elif domain == "search":
         active_tools = [t for t in MASTER_TOOLS if t["function"]["name"] == "execute_search"]
+
         system_prompt = (
-            "Kamu adalah Aira. Tugasmu mencari informasi di internet. "
+            "Kamu adalah Aira. Tugasmu mencari informasi di internet menggunakan SearXNG. "
             "JANGAN bercerita bahwa kamu sedang mencari informasi. "
-            "LANGSUNG panggil tool `execute_search` secara sistem."
+            "LANGSUNG panggil tool `execute_search` secara sistem.\n\n"
+            "ATURAN TOOL:\n"
+            "- Jika user meminta informasi biasa, gunakan search_mode='answer'.\n"
+            "- Jika user meminta berita terbaru, gunakan search_mode='news'.\n"
+            "- Jika user meminta daftar link/sumber, gunakan search_mode='links'.\n"
+            "- Jika user meminta gambar/foto/image dari internet, WAJIB gunakan search_mode='images'.\n\n"
+            "Contoh jika user berkata: 'carikan gambar jiwoo h2h'\n"
+            "Panggil tool:\n"
+            "{\n"
+            '  "name": "execute_search",\n'
+            '  "arguments": {\n'
+            '    "search_query": "jiwoo h2h",\n'
+            '    "search_mode": "images"\n'
+            "  }\n"
+            "}"
         ) + json_fallback_instruction
         
     elif domain == "image":
