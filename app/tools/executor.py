@@ -78,29 +78,37 @@ async def execute_tool_by_name(name: str, args: dict, user_input: str) -> dict:
         res = None
 
         if name == "get_clinic_info":
-            res = get_clinic_info({})
+            res = get_clinic_info({
+                "user_input": user_input
+            })
 
         elif name == "get_doctor_list":
             res = get_doctor_list({
-                "poli_name": args.get("poli_name", "")
+                "poli_name": args.get("poli_name", ""),
+                "poli_id": args.get("poli_id", ""),
             })
 
         elif name == "get_doctor_schedule_list":
             res = get_doctor_schedule_list({
-                "doctor_name": args.get("doctor_name", "")
+                "doctor_name": args.get("doctor_name", ""),
+                "dokter_id": args.get("dokter_id", ""),
             })
 
         elif name == "check_schedule":
             res = check_schedule({
                 "doctor_name": args.get("doctor_name", ""),
+                "dokter_id": args.get("dokter_id", ""),
                 "poli_name": args.get("poli_name", ""),
+                "poli_id": args.get("poli_id", ""),
                 "booking_date": args.get("booking_date", ""),
             })
 
         elif name == "book_appointment":
             res = book_appointment({
                 "doctor_name": args.get("doctor_name", ""),
+                "dokter_id": args.get("dokter_id", ""),
                 "poli_name": args.get("poli_name", ""),
+                "poli_id": args.get("poli_id", ""),
                 "patient_name": args.get("patient_name", ""),
                 "booking_date": args.get("booking_date", ""),
                 "booking_time": args.get("booking_time", ""),
@@ -109,17 +117,23 @@ async def execute_tool_by_name(name: str, args: dict, user_input: str) -> dict:
 
         elif name == "get_weather":
             res = execute_weather({
-                "location": args.get("location", "")
+                "location": args.get("location", "") or user_input
             })
 
         elif name == "execute_search":
-            search_query = (
-                args.get("search_query")
-                or args.get("query")
-                or user_input
-            )
+            search_query = args.get("search_query", "").strip() or user_input.strip()
 
-            search_mode = detect_search_mode(user_input, args)
+            search_mode = (
+                args.get("search_mode")
+                or args.get("mode")
+                or ""
+            ).strip().lower()
+
+            if not search_mode:
+                search_mode = "images" if is_image_search_request(user_input, args) else "answer"
+
+            if search_mode not in ["answer", "links", "news", "images"]:
+                search_mode = "answer"
 
             res = execute_search({
                 "user_input": user_input,

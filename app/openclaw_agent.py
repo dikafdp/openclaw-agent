@@ -8,7 +8,7 @@ from app import config
 from app.routers.pre_router import classify_intent
 from app.prompts.system_prompts import get_domain_context
 from app.tools.executor import execute_tool_by_name
-
+from app.routers.medical_router import route_medical_intent
 
 DIRECT_RETURN_TOOLS = {
     "execute_search",
@@ -107,6 +107,7 @@ class TrueOpenClawAgent:
             "domain": domain,
             "action": action,
             "image_url": tool_res.get("image_url", self.last_image_url or ""),
+            "data": tool_res,
         }
 
         if "search_results" in tool_res:
@@ -125,6 +126,20 @@ class TrueOpenClawAgent:
 
         domain = classify_intent(user_input)
         system_prompt, active_tools = get_domain_context(domain)
+        
+        if domain == "medical":
+            routed = route_medical_intent(user_input)
+            action = routed.get("action", "get_clinic_info")
+
+            tool_res = await execute_tool_by_name(action, routed, user_input)
+
+            return {
+                "final_answer": tool_res.get("final_answer", "Data medis berhasil diproses."),
+                "domain": "medical",
+                "action": action,
+                "image_url": tool_res.get("image_url", ""),
+                "data": tool_res,
+            }
 
         messages = [
             {"role": "system", "content": system_prompt},
